@@ -4,13 +4,24 @@
  MySQL → Maxwell → RabbitMQ → Logstash → Elasticsearch 的数据同步链路
 
  ```
- MySQL (binlog) 
-   ↓
-Maxwell (producer: rabbitmq)
-   ↓
-RabbitMQ (maxwell 发送 JSON 消息)
-   ↓
-Logstash (input from rabbitmq, output to Elasticsearch)
-   ↓
-Elasticsearch
++-------+      +---------+      +-----------+      +----------+      +---------------+
+| MySQL |----->| Maxwell |----->| RabbitMQ  |----->| Logstash |----->| Elasticsearch |
++-------+      +---------+      +-----------+      +----------+      +---------------+
+   ^                                                                       |
+   |                                                                       |
+ (Binlog)                                                                  |
+                                                                           |
+                                                                     +---------+
+                                                                     | Kibana  |
+                                                                     +---------+
+```
+
+## 修改各个模块的配置
+
+- logstash/pipeline/logstash.conf
+- maxwell/config/config.properties
+
+## 启动
+```
+docker compose up -d
 ```
