@@ -16,12 +16,6 @@
                                                                      +---------+
 ```
 
-## 修改各个模块的配置
+## 如何使用
 
-- logstash/pipeline/logstash.conf
-- maxwell/config/config.properties
-
-## 启动
-```
-docker compose up -d
-```
+参考文章 https://juejin.cn/post/7532387717273026603
