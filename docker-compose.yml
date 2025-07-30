@@ -1,0 +1,105 @@
+services:
+  elasticsearch:
+    build:
+      context: elasticsearch/
+      args:
+        ELASTIC_VERSION: ${ELASTIC_VERSION}
+    container_name: elasticsearch
+    volumes:
+      - ./elasticsearch/config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro,Z
+      - ./elasticsearch/data:/usr/share/elasticsearch/data:Z
+      - ./elasticsearch/init-users.sh:/usr/local/bin/init-users.sh:ro,Z
+    ports:
+      - 9200:9200
+      - 9300:9300
+    environment:
+      node.name: elasticsearch
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+      discovery.type: single-node
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:-}
+      KIBANA_SYSTEM_PASSWORD: ${KIBANA_SYSTEM_PASSWORD:-}
+    networks:
+      - My2ES
+    restart: unless-stopped
+    command: >
+      bash -c "/usr/local/bin/docker-entrypoint.sh &
+             sleep 10 &&
+             /usr/local/bin/init-users.sh &&
+             wait"
+
+  kibana:
+    build:
+      context: kibana/
+      args:
+        ELASTIC_VERSION: ${ELASTIC_VERSION}
+    container_name: kibana
+    volumes:
+      - ./kibana/config/kibana.yml:/usr/share/kibana/config/kibana.yml:ro,Z
+    ports:
+      - 5601:5601
+    environment:
+      KIBANA_SYSTEM_PASSWORD: ${KIBANA_SYSTEM_PASSWORD:-}
+    networks:
+      - My2ES
+    depends_on:
+      - elasticsearch
+    restart: unless-stopped
+
+  rabbitmq:
+      build:
+        context: ./rabbitmq
+        args:
+          RABBITMQ_VERSION: ${RABBITMQ_VERSION}
+      container_name: rabbitmq
+      ports:
+        - 5672:5672
+        - 15672:15672
+      volumes:
+      - ./rabbitmq/config/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      networks:
+        - My2ES
+      restart: unless-stopped
+
+  logstash:
+    build:
+      context: logstash/
+      args:
+        ELASTIC_VERSION: ${ELASTIC_VERSION}
+    container_name: logstash
+    volumes:
+      - ./logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml:ro,Z
+      - ./logstash/pipeline:/usr/share/logstash/pipeline:ro,Z
+    ports:
+      - 5044:5044
+      - 50000:50000/tcp
+      - 50000:50000/udp
+      - 9600:9600
+    environment:
+      LS_JAVA_OPTS: -Xms256m -Xmx256m
+      LOGSTASH_INTERNAL_PASSWORD: ${LOGSTASH_INTERNAL_PASSWORD:-}
+    networks:
+      - My2ES
+    depends_on:
+      - elasticsearch
+      - rabbitmq
+    restart: unless-stopped
+
+  maxwell:
+    build:
+      context: ./maxwell
+    container_name: maxwell
+    command: bin/maxwell --config /app/config/config.properties
+    volumes:
+    - ./maxwell/config/config.properties:/app/config/config.properties:ro
+    networks:
+      - My2ES
+    depends_on:
+      - rabbitmq
+    restart: unless-stopped
+
+networks:
+  My2ES:
+    driver: bridge
+
+volumes:
+  elasticsearch:

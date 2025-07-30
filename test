@@ -1,0 +1,73 @@
+input {
+  rabbitmq {
+    host => "10.0.1.36"
+    port => 5672
+    user => "guest"
+    password => "guest"
+    queue => "maxwell"                 # 声明 queue
+    exchange => "maxwell"              # 绑定到 exchange
+    exchange_type => "fanout"          # 类型要匹配 maxwell 的配置
+    auto_delete => false
+    ack => true
+  }
+}
+
+filter {
+  # 你可以在这里添加 grok 或 mutate 来处理 maxwell 的数据结构
+  # 例如：添加 @timestamp 或提取字段
+  json {
+    source => "message"
+  }
+
+  translate {
+    source => "[type]"
+    target => "[action]"
+    dictionary => {
+      "insert" => "index"
+      "bootstrap-insert" => "index"
+      "update" => "update"
+      "delete" => "delete"
+    }
+  }
+
+
+  mutate {
+    add_field => {
+      "id" => "%{[data][id]}"
+      "name" => "%{[data][name]}"
+      "age" => "%{[data][age]}"
+      "createdAt" => "%{[data][createdAt]}"
+      "updatedAt" => "%{[data][updatedAt]}"
+    }
+    remove_field => [
+      "message",
+      "original",
+      "@version",
+      "@timestamp",
+      "event",
+      "database",
+      "type",
+      "ts",
+      "xid",
+      "commit",
+      "data",
+      "old"
+    ]
+  }
+}
+
+output {
+  elasticsearch {
+    hosts => ["http://10.0.1.36:9200"]
+    index => "%{[table]}"
+    document_id => "%{id}"
+    action => "%{action}"
+    user => "elastic"
+    password => "changeme"
+  }
+
+  # 将结果打印到标准输出
+  stdout {
+    codec => rubydebug
+  }
+}
