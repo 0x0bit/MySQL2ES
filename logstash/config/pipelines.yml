@@ -1,0 +1,7 @@
+- pipeline.id: jdbc
+  path.config: "/usr/share/logstash/pipeline/logstash-jdbc.conf"
+  pipeline.workers: 2
+
+- pipeline.id: rabbitmq
+  path.config: "/usr/share/logstash/pipeline/logstash-rabbitmq.conf"
+  queue.type: persisted
